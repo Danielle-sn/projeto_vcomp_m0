@@ -36,13 +36,13 @@ def detectar_quadrado(frame):
         # Filtro de quadrado
         if len(approx) == 4 and area > 500:
             x,y,w,h = cv2.boundingRect(approx)
-            cv2.drawContours(frame_copia, [approx], -1, (0,255,0), 3)
-            cv2.putText(frame_copia, "Quadrado", (x,y-10),
+            cv2.drawContours(frame, [approx], -1, (0,255,0), 3)
+            cv2.putText(frame, "Quadrado", (x,y-10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
-    return frame,frame_copia,frame_TA, frame_canny
+    return frame,frame_TA, frame_canny
 
 
-captura = cv2.VideoCapture(0)
+captura = cv2.VideoCapture(1)
 
 if captura.isOpened(): 
     
