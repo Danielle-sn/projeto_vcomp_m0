@@ -4,7 +4,7 @@ import numpy as np
 
 def detectar_quadrado(frame):
     # conversão para escala de cinza 
-    img_cinza = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    img_cinza = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # desfoque gaussiano 
     img_desf = cv2.GaussianBlur(img_cinza, (7, 7), 0)  
@@ -42,7 +42,7 @@ def detectar_quadrado(frame):
     return frame,frame_TA, frame_canny
 
 
-captura = cv2.VideoCapture(1)
+captura = cv2.VideoCapture(0)
 
 if captura.isOpened(): 
     
