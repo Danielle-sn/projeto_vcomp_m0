@@ -31,9 +31,10 @@ def detectar_quadrado(frame):
             100            # Segundo threshold (threshold2)
         )
     
-    contornos, _ = cv2.findContours(frame_canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+# RETR_TREE → retorna contornos + hierarquia
+    contornos, hierarquia = cv2.findContours(frame_canny, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    for cnt in contornos:
+    for i, cnt in enumerate(contornos):
         epsilon = 0.02* cv2.arcLength(cnt, True) #distância máxima do contorno ao contorno aproximado
         approx = cv2.approxPolyDP(cnt, epsilon , True)
         area = cv2.contourArea(cnt)
@@ -49,10 +50,21 @@ def detectar_quadrado(frame):
 
             proporcao = float(w) / h if h != 0 else 0
             if 0.95 <= proporcao <= 1.05:
+                # acessa hierarquia do contorno atual
+                # hierarquia~[0][i] = [next, prev, first_child, parent]
+                next_cont, prev_cont, child, parent = hierarquia[0][i]
+
+                # ex: Se não tem pai -> quadrado externo
+                if parent == -1:
                 
-                cv2.drawContours(frame, [approx], -1, (0,255,0), 3)
-                cv2.putText(frame, "Quadrado", (x,y-10),
+                    cv2.drawContours(frame, [approx], -1, (0,255,0), 3)
+                    cv2.putText(frame, "Quadrado", (x,y-10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
+                else: 
+                     # quadrado interno (filho)
+                    cv2.drawContours(frame, [approx], -1, (255,0,0), 2)
+                    cv2.putText(frame, f"Quadrado interno (area={int(area)})", 
+                                (x,y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
                 # Centro do quadrado
                 M = cv2.moments(cnt) # retorna um dicionário com vários momentos
                 if M["m00"] != 0: # m00 representa a área do contorno
