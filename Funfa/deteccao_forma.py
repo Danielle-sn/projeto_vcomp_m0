@@ -42,7 +42,7 @@ def detectar_quadrado(frame):
     return frame,frame_TA, frame_canny
 
 
-captura = cv2.VideoCapture(0)
+captura = cv2.VideoCapture(1)
 
 if captura.isOpened(): 
     

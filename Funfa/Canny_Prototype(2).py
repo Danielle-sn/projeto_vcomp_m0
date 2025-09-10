@@ -5,7 +5,7 @@ import numpy as np
 camera = cv2.VideoCapture(1)
 
 # CLAHE para lidar com iluminação variável
-clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+clahe = cv2(clipLimit=3.0, tileGridSize=(8, 8))
 
 while True:
     ret, frame = camera.read()
