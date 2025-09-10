@@ -34,7 +34,7 @@ def detectar_quadrado(frame):
     contornos, _ = cv2.findContours(frame_canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for cnt in contornos:
-        epsilon = 0.05* cv2.arcLength(cnt, True) #distância máxima do contorno ao contorno aproximado
+        epsilon = 0.02* cv2.arcLength(cnt, True) #distância máxima do contorno ao contorno aproximado
         approx = cv2.approxPolyDP(cnt, epsilon , True)
         area = cv2.contourArea(cnt)
 
@@ -46,24 +46,27 @@ def detectar_quadrado(frame):
             # y -  canto superior esquerdo
             # w - largura em pixels 
             # h - altura em pixels 
-            
-            cv2.drawContours(frame, [approx], -1, (0,255,0), 3)
-            cv2.putText(frame, "Quadrado", (x,y-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
-            # Centro do quadrado
-            M = cv2.moments(cnt) # retorna um dicionário com vários momentos
-            if M["m00"] != 0: # m00 representa a área do contorno
-                cx = int(M["m10"]/M["m00"]) # m10 soma de todas as coord x 
-                cy = int(M["m01"]/M["m00"]) # m01 soma de todas as coord y 
-                cv2.circle(frame, (cx, cy), 5, (0, 0, 255), -1)
+
+            proporcao = float(w) / h if h != 0 else 0
+            if 0.95 <= proporcao <= 1.05:
                 
+                cv2.drawContours(frame, [approx], -1, (0,255,0), 3)
+                cv2.putText(frame, "Quadrado", (x,y-10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
+                # Centro do quadrado
+                M = cv2.moments(cnt) # retorna um dicionário com vários momentos
+                if M["m00"] != 0: # m00 representa a área do contorno
+                    cx = int(M["m10"]/M["m00"]) # m10 soma de todas as coord x 
+                    cy = int(M["m01"]/M["m00"]) # m01 soma de todas as coord y 
+                    cv2.circle(frame, (cx, cy), 5, (0, 0, 255), -1)
+            
 
             
 
     return frame, frame_canny, img_clahe
 
 
-captura = cv2.VideoCapture(0)
+captura = cv2.VideoCapture(1)
 
 if captura.isOpened(): 
     
