@@ -15,14 +15,14 @@ def detectar_quadrado(frame):
                                              
     #thresholding adaptativo - se adapta a brilhos e sombras locais 
 
-    frame_TA = cv2.adaptiveThreshold(
-        img_desf,          # Imagem de entrada (em escala de cinza)
-        255,                    # Valor máximo a ser atribuído (branco)
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C, # O método adaptativo a ser usado
-        cv2.THRESH_BINARY_INV,  # Tipo de threshold (invertido neste caso)
-        11,                     # Tamanho da vizinhança (blockSize)
-        2                       # Constante C a ser subtraída da média
-    )
+    # frame_TA = cv2.adaptiveThreshold(
+    #     img_desf,          # Imagem de entrada (em escala de cinza)
+    #     255,                    # Valor máximo a ser atribuído (branco)
+    #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C, # O método adaptativo a ser usado
+    #     cv2.THRESH_BINARY_INV,  # Tipo de threshold (invertido neste caso)
+    #     11,                     # Tamanho da vizinhança (blockSize)
+    #     2                       # Constante C a ser subtraída da média
+    # )
     
 
     frame_canny = cv2.Canny(
@@ -58,7 +58,7 @@ def detectar_quadrado(frame):
 
             
 
-    return frame,frame_TA, frame_canny, img_clahe
+    return frame, frame_canny, img_clahe
 
 
 captura = cv2.VideoCapture(0)
@@ -75,10 +75,10 @@ if captura.isOpened():
             break
         frame_copia = frame.copy()
 
-        frame_copia,frame_TA, frame_canny, img_clahe = detectar_quadrado(frame_copia)
+        frame_copia, frame_canny, img_clahe = detectar_quadrado(frame_copia)
 
         
-        cv2.imshow("thresholding adaptativo", frame_TA)
+        #cv2.imshow("thresholding adaptativo", frame_TA)
         cv2.imshow("canny", frame_canny)
         cv2.imshow("resultado final", frame_copia)
         cv2.imshow("CLAHE", img_clahe)
