@@ -6,6 +6,10 @@ def detectar_quadrado(frame):
     # conversão para escala de cinza 
     img_cinza = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+    #CLAHE
+    clahe= cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    img_clahe = clahe.apply(img_cinza) #Aplica contraste local sem estourar áreas mais claras das quais podem influenciar negativamente na detecção
+
     # desfoque gaussiano 
     img_desf = cv2.GaussianBlur(img_cinza, (7, 7), 0)  
                                              
@@ -54,7 +58,7 @@ def detectar_quadrado(frame):
 
             
 
-    return frame,frame_TA, frame_canny
+    return frame,frame_TA, frame_canny, img_clahe
 
 
 captura = cv2.VideoCapture(0)
@@ -71,12 +75,15 @@ if captura.isOpened():
             break
         frame_copia = frame.copy()
 
-        frame_copia,frame_TA, frame_canny = detectar_quadrado(frame_copia)
+        frame_copia,frame_TA, frame_canny, img_clahe = detectar_quadrado(frame_copia)
 
         
         cv2.imshow("thresholding adaptativo", frame_TA)
         cv2.imshow("canny", frame_canny)
         cv2.imshow("resultado final", frame_copia)
+        cv2.imshow("CLAHE", img_clahe)
+
+    
     
 
         
