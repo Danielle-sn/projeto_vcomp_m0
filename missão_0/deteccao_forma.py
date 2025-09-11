@@ -11,7 +11,7 @@ def detectar_quadrado(frame):
     img_clahe = clahe.apply(img_cinza) #Aplica contraste local sem estourar áreas mais claras das quais podem influenciar negativamente na detecção
 
     # desfoque gaussiano 
-    img_desf = cv2.GaussianBlur(img_cinza, (7, 7), 0)  
+    img_desf = cv2.GaussianBlur(img_clahe, (7, 7), 0)  
                                              
     #thresholding adaptativo - se adapta a brilhos e sombras locais 
 
