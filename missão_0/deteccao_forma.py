@@ -88,10 +88,6 @@ if captura.isOpened():
         cv2.imshow("resultado final", frame_copia)
         cv2.imshow("CLAHE", img_clahe)
 
-    
-    
-
-        
         
         key = cv2.waitKey(5) # faz o frame esperar x milissegundos e armazena a tecla 
         if key == 27: #ESC
