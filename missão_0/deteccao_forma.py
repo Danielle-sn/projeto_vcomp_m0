@@ -21,6 +21,26 @@ COR_CENTRO = (0, 0, 255)
 LOWER_LIMIT = 80
 UPPER_LIMIT = 100
 
+# Parâmetros do filtro de Kalman
+UNCERTAINTY_MAGNITUDE = 0.03
+NOISE_MAGNITUDE = 0.5
+
+
+def incializar_kalman():
+    kf = cv2.KalmanFilter(4, 2)
+
+    kf.transitionMatrix = np.array([[1, 0, 1, 0],
+                                    [0, 1, 0, 1],
+                                    [0, 0, 1, 0],
+                                    [0, 0, 0, 1]], np.float32)
+    
+    kf.measurementMatrix = np.array([[1, 0, 0, 0],
+                                     [0, 1, 0, 0]], np.float32)
+    
+    kf.processNoiseCov = np.eye(4, dtype=np.float32) * UNCERTAINTY_MAGNITUDE
+
+    kf.measurementNoiseCov = np.eye(2, dtype=np.float32) * NOISE_MAGNITUDE
+    
 
 def detectar_quadrado(frame):
     
