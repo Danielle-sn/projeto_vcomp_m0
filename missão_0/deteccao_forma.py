@@ -10,12 +10,16 @@ GAUSSIAN_BLUR_KSIZE = (7, 7)
 CONTOUR_EPSILON = 0.02       # Fator para o approxPolyDP (2%)
 MIN_AREA = 500               # Área mínima para ser considerado um quadrado
 MIN_ASPECT_RATIO = 0.95      # Proporção mínima 
-MAX_ASPECT_RATIO = 1.05      # Proporção máxima
+MAX_ASPECT_RATIO = 1.2      # Proporção máxima
 
 # Parâmetros de desenho
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 COR_QUADRADO = (0, 255, 0)
 COR_CENTRO = (0, 0, 255)
+
+# Parâmetros de angulação
+LOWER_LIMIT = 80
+UPPER_LIMIT = 100
 
 
 def detectar_quadrado(frame):
@@ -33,7 +37,12 @@ def detectar_quadrado(frame):
     contornos, hierarquia = cv2.findContours(bordas_canny, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE) # RETR_TREE → retorna contornos + hierarquia
 
     quadrados_verificados = []
-
+    def angulo_cos(p1, p2, p3):
+         v1 = p1 - p2
+         v2 = p3 - p2
+         cosang = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+         return np.degrees(np.arccos(cosang))
+    
     for i, cnt in enumerate(contornos):
 
         area = cv2.contourArea(cnt)
@@ -45,6 +54,23 @@ def detectar_quadrado(frame):
         # Filtro de quadrado
         if len(approx) == 4 and area > MIN_AREA: # área em pixels, calcular qual valor seria ideal 
             print(area) 
+            angulos = []
+            for j in range(4):
+                 p1 = approx[j][0]
+                 p2 = approx[(j+1)%4][0]
+                 p3 = approx[(j+2)%4][0]
+                 angulos.append(angulo_cos(p1, p2, p3))
+            if all (LOWER_LIMIT <= ang <= UPPER_LIMIT for ang in angulos): #Tolera 10°
+                 rect = cv2.minAreaRect(approx)
+                 (w, h) = rect[1]
+
+                 if h != 0:
+                    espectro_ratio = float(w) / h if w > h else float(h) / w
+                 else:
+                    espectro_ratio = 0
+                
+ 
+
             x,y,w,h = cv2.boundingRect(approx)  # calcula um retângulo reto (não rotacionado) de menor área possível  
             espectro_ratio = float(w) / h if h != 0 else 0
 
@@ -84,7 +110,7 @@ def desenhar(frame, quadrados):
 
 def main():
 
-    captura = cv2.VideoCapture(1)
+    captura = cv2.VideoCapture(0)
         
     validacao, frame = captura.read() 
 
