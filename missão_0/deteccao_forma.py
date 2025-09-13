@@ -1,30 +1,6 @@
 import cv2
 import numpy as np 
-
-# Parâmetros de pré-processamento
-CLAHE_CLIPLIMIT = 2.0
-CLAHE_GRID_SIZE = (8, 8)
-GAUSSIAN_BLUR_KSIZE = (7, 7)
-
-# Parâmetros de filtragem de contornos
-CONTOUR_EPSILON = 0.02       # Fator para o approxPolyDP (2%)
-MIN_AREA = 500               # Área mínima para ser considerado um quadrado
-MIN_ASPECT_RATIO = 0.95      # Proporção mínima 
-MAX_ASPECT_RATIO = 1.2      # Proporção máxima
-
-# Parâmetros de desenho
-FONT = cv2.FONT_HERSHEY_SIMPLEX
-COR_QUADRADO = (0, 255, 0)
-COR_CENTRO = (0, 0, 255)
-
-# Parâmetros de angulação
-LOWER_LIMIT = 80
-UPPER_LIMIT = 100
-
-# Parâmetros do filtro de Kalman
-UNCERTAINTY_MAGNITUDE = 0.03
-NOISE_MAGNITUDE = 50
-
+from config import PRE_PROCESSAMENTO, FILTRAGEM_CONTORNOS, DESENHO, ANGULACAO, FILTRO_KALMAN
 
 def incializar_kalman():
     kf = cv2.KalmanFilter(4, 2)
@@ -37,17 +13,17 @@ def incializar_kalman():
     kf.measurementMatrix = np.array([[1, 0, 0, 0],
                                      [0, 1, 0, 0]], np.float32)
     
-    kf.processNoiseCov = np.eye(4, dtype=np.float32) * UNCERTAINTY_MAGNITUDE
+    kf.processNoiseCov = np.eye(4, dtype=np.float32) * FILTRO_KALMAN["uncertainty_magnitude"]
 
-    kf.measurementNoiseCov = np.eye(2, dtype=np.float32) * NOISE_MAGNITUDE
+    kf.measurementNoiseCov = np.eye(2, dtype=np.float32) * FILTRO_KALMAN["noise_magnitude"]
     
 
 def detectar_quadrado(frame):
     
     frame_cinza = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # conversão para escala de cinza
-    clahe= cv2.createCLAHE(CLAHE_CLIPLIMIT, CLAHE_GRID_SIZE)
+    clahe= cv2.createCLAHE(PRE_PROCESSAMENTO["clahe_cliplimit"], PRE_PROCESSAMENTO["clahe_grid_size"])
     frame_clahe = clahe.apply(frame_cinza) #Aplica contraste local sem estourar áreas mais claras das quais podem influenciar negativamente na detecção
-    frame_suave = cv2.GaussianBlur(frame_clahe, GAUSSIAN_BLUR_KSIZE, 0)   # desfoque gaussiano                                       
+    frame_suave = cv2.GaussianBlur(frame_clahe, PRE_PROCESSAMENTO["gaussian_blur_ksize"], 0)   # desfoque gaussiano                                       
     bordas_canny = cv2.Canny( frame_suave, 50, 100)
     
 
@@ -71,11 +47,11 @@ def detectar_quadrado(frame):
 
             area = cv2.contourArea(cnt)
             perimetro = cv2.arcLength(cnt, True)
-            epsilon = CONTOUR_EPSILON * perimetro #distância máxima do contorno ao contorno aproximado
+            epsilon =  FILTRAGEM_CONTORNOS["contour_epsilon"] * perimetro #distância máxima do contorno ao contorno aproximado
             approx = cv2.approxPolyDP(cnt, epsilon , True)
 
             # Filtro de quadrado
-            if len(approx) == 4 and area > MIN_AREA: # área em pixels, calcular qual valor seria ideal 
+            if len(approx) == 4 and area > FILTRAGEM_CONTORNOS["min_area"]: # área em pixels, calcular qual valor seria ideal 
                 print(area) 
                 angulos = []
                 for j in range(4):
@@ -85,14 +61,14 @@ def detectar_quadrado(frame):
                     angulos.append(angulo_cos(p1, p2, p3))
 
 
-                if all (LOWER_LIMIT <= ang <= UPPER_LIMIT for ang in angulos): #Tolera 10°
+                if all ( ANGULACAO["lower_limit"] <= ang <= ANGULACAO["upper_limit"] for ang in angulos): #Tolera 10°
                     rect = cv2.minAreaRect(approx)
                     (w, h) = rect[1]
 
                     if h != 0:
                         espectro_ratio = float(w) / h if w > h else float(h) / w
 
-                        if MIN_ASPECT_RATIO <= espectro_ratio <= MAX_ASPECT_RATIO:
+                        if FILTRAGEM_CONTORNOS["min_aspect_ratio"] <= espectro_ratio <= FILTRAGEM_CONTORNOS["max_aspect_ratio"]:
                             # acessa hierarquia do contorno atual
                             # hierarquia~[0][i] = [next, prev, first_child, parent]
                             parent = hierarquia[i][3]
@@ -109,7 +85,7 @@ def desenhar(frame, quadrados):
         cv2.drawContours(frame, [quadrado], -1, (255,0,0), 3 )
 
         x, y, _, _ = cv2.boundingRect(quadrado)
-        cv2.putText(frame, F"Quadrado interno - area:{int(area)}", (x, y - 10), FONT, 0.7, COR_QUADRADO, 2)
+        cv2.putText(frame, F"Quadrado interno - area:{int(area)}", (x, y - 10), DESENHO["font"], 0.7, DESENHO["cor_quadrado"], 2)
 
          # Cálculo e desenho do centro do quadrado
  
@@ -117,40 +93,6 @@ def desenhar(frame, quadrados):
         if M["m00"] != 0: # m00 representa a área do contorno
                     cx = int(M["m10"]/M["m00"]) # m10 soma de todas as coord x 
                     cy = int(M["m01"]/M["m00"]) # m01 soma de todas as coord y 
-                    cv2.circle(frame, (cx, cy), 5, (0, 0, 255), -1)
+                    cv2.circle(frame, (cx, cy), 5, DESENHO["cor_centro"], -1)
 
 
-def main():
-
-    captura = cv2.VideoCapture(1)
-        
-    validacao, frame = captura.read() 
-
-    while validacao: 
-        validacao, frame = captura.read()
-
-        if not validacao:
-            print("Erro: Nao foi possivel ler o frame da câmera.")
-            break
-
-        frame_copia = frame.copy()
-
-        quadrados_internos, bordas_canny, img_clahe = detectar_quadrado(frame_copia)
-
-        desenhar(frame_copia, quadrados_internos)
-        
-        #cv2.imshow("thresholding adaptativo", frame_TA)
-        cv2.imshow("canny", bordas_canny)
-        cv2.imshow("resultado final", frame_copia)
-        cv2.imshow("CLAHE", img_clahe)
-
-        
-        key = cv2.waitKey(5) # faz o frame esperar x milissegundos e armazena a tecla 
-        if key == 27: #ESC
-            break 
-
-    captura.release() # finaliza a conexão com a webcam 
-    cv2.destroyAllWindows() # fechar a janela 
-
-if __name__ == "__main__":
-    main()
