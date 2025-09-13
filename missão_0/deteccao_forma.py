@@ -23,7 +23,7 @@ UPPER_LIMIT = 100
 
 # Parâmetros do filtro de Kalman
 UNCERTAINTY_MAGNITUDE = 0.03
-NOISE_MAGNITUDE = 0.5
+NOISE_MAGNITUDE = 50
 
 
 def incializar_kalman():
@@ -45,79 +45,71 @@ def incializar_kalman():
 def detectar_quadrado(frame):
     
     frame_cinza = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # conversão para escala de cinza
-
     clahe= cv2.createCLAHE(CLAHE_CLIPLIMIT, CLAHE_GRID_SIZE)
     frame_clahe = clahe.apply(frame_cinza) #Aplica contraste local sem estourar áreas mais claras das quais podem influenciar negativamente na detecção
-   
-    frame_suave = cv2.GaussianBlur(frame_clahe, GAUSSIAN_BLUR_KSIZE, 0)   # desfoque gaussiano 
-                                             
+    frame_suave = cv2.GaussianBlur(frame_clahe, GAUSSIAN_BLUR_KSIZE, 0)   # desfoque gaussiano                                       
     bordas_canny = cv2.Canny( frame_suave, 50, 100)
     
 
     contornos, hierarquia = cv2.findContours(bordas_canny, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE) # RETR_TREE → retorna contornos + hierarquia
 
-    quadrados_verificados = []
-    def angulo_cos(p1, p2, p3):
-         v1 = p1 - p2
-         v2 = p3 - p2
-         cosang = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
-         return np.degrees(np.arccos(cosang))
+    espectro_ratio = 0
+    quadrados_internos = []
+
+    if hierarquia is not None:
+        hierarquia = hierarquia[0]
     
-    for i, cnt in enumerate(contornos):
+        def angulo_cos(p1, p2, p3):
+            v1 = p1 - p2
+            v2 = p3 - p2
+            cosang = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+            return np.degrees(np.arccos(cosang))
+        
+        
+        
+        for i, cnt in enumerate(contornos):
 
-        area = cv2.contourArea(cnt)
+            area = cv2.contourArea(cnt)
+            perimetro = cv2.arcLength(cnt, True)
+            epsilon = CONTOUR_EPSILON * perimetro #distância máxima do contorno ao contorno aproximado
+            approx = cv2.approxPolyDP(cnt, epsilon , True)
 
-        perimetro = cv2.arcLength(cnt, True)
-        epsilon = CONTOUR_EPSILON * perimetro #distância máxima do contorno ao contorno aproximado
-        approx = cv2.approxPolyDP(cnt, epsilon , True)
+            # Filtro de quadrado
+            if len(approx) == 4 and area > MIN_AREA: # área em pixels, calcular qual valor seria ideal 
+                print(area) 
+                angulos = []
+                for j in range(4):
+                    p1 = approx[j][0]
+                    p2 = approx[(j+1)%4][0]
+                    p3 = approx[(j+2)%4][0]
+                    angulos.append(angulo_cos(p1, p2, p3))
 
-        # Filtro de quadrado
-        if len(approx) == 4 and area > MIN_AREA: # área em pixels, calcular qual valor seria ideal 
-            print(area) 
-            angulos = []
-            for j in range(4):
-                 p1 = approx[j][0]
-                 p2 = approx[(j+1)%4][0]
-                 p3 = approx[(j+2)%4][0]
-                 angulos.append(angulo_cos(p1, p2, p3))
-            if all (LOWER_LIMIT <= ang <= UPPER_LIMIT for ang in angulos): #Tolera 10°
-                 rect = cv2.minAreaRect(approx)
-                 (w, h) = rect[1]
 
-                 if h != 0:
-                    espectro_ratio = float(w) / h if w > h else float(h) / w
-                 else:
-                    espectro_ratio = 0
-                
- 
+                if all (LOWER_LIMIT <= ang <= UPPER_LIMIT for ang in angulos): #Tolera 10°
+                    rect = cv2.minAreaRect(approx)
+                    (w, h) = rect[1]
 
-            x,y,w,h = cv2.boundingRect(approx)  # calcula um retângulo reto (não rotacionado) de menor área possível  
-            espectro_ratio = float(w) / h if h != 0 else 0
+                    if h != 0:
+                        espectro_ratio = float(w) / h if w > h else float(h) / w
 
-            if MIN_ASPECT_RATIO <= espectro_ratio <= MAX_ASPECT_RATIO:
-                # acessa hierarquia do contorno atual
-                # hierarquia~[0][i] = [next, prev, first_child, parent]
-                _, _, _, parent = hierarquia[0][i]
+                        if MIN_ASPECT_RATIO <= espectro_ratio <= MAX_ASPECT_RATIO:
+                            # acessa hierarquia do contorno atual
+                            # hierarquia~[0][i] = [next, prev, first_child, parent]
+                            parent = hierarquia[i][3]
+                            child = hierarquia[i][2]
 
-                # ex: Se não tem pai -> quadrado externo
-                if parent == -1:
-                    #continue
-                    cv2.drawContours(frame, [approx], -1, (0,255,0), 3)
-                    cv2.putText(frame, "Quadrado externo", (x,y-10), FONT, 0.7, (0,255,0), 2)
+                            # ex: Se não tem pai -> quadrado externo
+                            if parent != -1 and child == -1:
+                                quadrados_internos.append((area, approx))           
 
-                else: 
-                    # quadrado interno (filho)
-                    quadrados_verificados.append(approx)       
-                   
-
-    return quadrados_verificados, bordas_canny, frame_clahe
+    return quadrados_internos, bordas_canny, frame_clahe
 
 def desenhar(frame, quadrados):
-    for quadrado in quadrados:
+    for area,quadrado in quadrados:
         cv2.drawContours(frame, [quadrado], -1, (255,0,0), 3 )
 
         x, y, _, _ = cv2.boundingRect(quadrado)
-        cv2.putText(frame, "Quadrado interno", (x, y - 10), FONT, 0.7, COR_QUADRADO, 2)
+        cv2.putText(frame, F"Quadrado interno - area:{int(area)}", (x, y - 10), FONT, 0.7, COR_QUADRADO, 2)
 
          # Cálculo e desenho do centro do quadrado
  
@@ -130,7 +122,7 @@ def desenhar(frame, quadrados):
 
 def main():
 
-    captura = cv2.VideoCapture(0)
+    captura = cv2.VideoCapture(1)
         
     validacao, frame = captura.read() 
 
@@ -143,9 +135,9 @@ def main():
 
         frame_copia = frame.copy()
 
-        quadrados_verificados, bordas_canny, img_clahe = detectar_quadrado(frame_copia)
+        quadrados_internos, bordas_canny, img_clahe = detectar_quadrado(frame_copia)
 
-        desenhar(frame_copia, quadrados_verificados)
+        desenhar(frame_copia, quadrados_internos)
         
         #cv2.imshow("thresholding adaptativo", frame_TA)
         cv2.imshow("canny", bordas_canny)
