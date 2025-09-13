@@ -61,9 +61,11 @@ def detectar_quadrado(frame):
                     angulos.append(angulo_cos(p1, p2, p3))
 
 
+
                 if all ( ANGULACAO["lower_limit"] <= ang <= ANGULACAO["upper_limit"] for ang in angulos): #Tolera 10°
                     rect = cv2.minAreaRect(approx)
                     (w, h) = rect[1]
+
 
                     if h != 0:
                         espectro_ratio = float(w) / h if w > h else float(h) / w
